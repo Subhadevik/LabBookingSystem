@@ -106,7 +106,7 @@ The application supports these roles:
 
 ### Login Page
 
-<img src="<img width="1915" height="864" alt="image" src="https://github.com/user-attachments/assets/1c8fca78-9e83-4276-a46c-a98b6ce00859" alt="Login Page" width="500">
+<img width="1915" height="864" alt="image" src="https://github.com/user-attachments/assets/1c8fca78-9e83-4276-a46c-a98b6ce00859" alt="Login Page" width="500">
 
 ### Booking Page
 
