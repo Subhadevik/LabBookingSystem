@@ -54,7 +54,19 @@ export default function Login() {
 
       if (result.success) {
         localStorage.setItem('token', result.token);
-        localStorage.setItem('user', JSON.stringify(result.user));
+        // Normalize user _id to string when present (handle MongoDB $oid shape)
+        const userObj: any = result.user || {};
+        if (userObj._id && typeof userObj._id === 'object' && userObj._id.$oid) {
+          userObj._id = userObj._id.$oid;
+        }
+        if (userObj._id && typeof userObj._id !== 'string') {
+          try {
+            userObj._id = String(userObj._id);
+          } catch (e) {
+            // leave as-is if conversion fails
+          }
+        }
+        localStorage.setItem('user', JSON.stringify(userObj));
         navigate('/dashboard');
       } else {
         setError(result.message || 'Login failed');

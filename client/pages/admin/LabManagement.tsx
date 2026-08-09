@@ -14,6 +14,9 @@ import { Lab } from '@shared/types';
 
 export default function LabManagement() {
   const [labs, setLabs] = useState<Lab[]>([]);
+  const [labIncharges, setLabIncharges] = useState<any[]>([]);
+  const [viewingBookings, setViewingBookings] = useState<any[] | null>(null);
+  const [viewingLab, setViewingLab] = useState<Lab | null>(null);
   const [loading, setLoading] = useState(true);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingLab, setEditingLab] = useState<Lab | null>(null);
@@ -29,7 +32,19 @@ export default function LabManagement() {
 
   useEffect(() => {
     fetchLabs();
+    fetchLabIncharges();
   }, []);
+
+  const fetchLabIncharges = async () => {
+    try {
+      const res = await fetch('/api/users');
+      const j = await res.json();
+      if (j.success) {
+        const list = j.data.filter((u: any) => u.role === 'lab_incharge');
+        setLabIncharges(list);
+      }
+    } catch (err) { console.error(err); }
+  };
 
   const fetchLabs = async () => {
     try {
@@ -209,6 +224,16 @@ export default function LabManagement() {
                       placeholder="e.g., GPUs, Workstations, Servers"
                     />
                   </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="labIncharge">Lab Incharge</Label>
+                    <select id="labIncharge" value={(formData as any).labInchargeId || ''} onChange={(e) => setFormData({ ...formData, labInchargeId: e.target.value || undefined })} className="input">
+                      <option value="">-- none --</option>
+                      {labIncharges.map(li => (
+                        <option key={li._id} value={li._id}>{li.name} ({li.email})</option>
+                      ))}
+                    </select>
+                  </div>
                   
                   <div className="flex items-center space-x-2">
                     <Switch
@@ -265,6 +290,7 @@ export default function LabManagement() {
                     <TableHead>Lab Name</TableHead>
                     <TableHead>Capacity</TableHead>
                     <TableHead>Equipment</TableHead>
+                    <TableHead>Incharge</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Created</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -299,6 +325,9 @@ export default function LabManagement() {
                         </div>
                       </TableCell>
                       <TableCell>
+                        {lab.labInchargeId ? (labIncharges.find(l => l._id === lab.labInchargeId)?.name || lab.labInchargeId) : '—'}
+                      </TableCell>
+                      <TableCell>
                         <Badge className={lab.isActive ? 'bg-success text-success-foreground' : 'bg-destructive text-destructive-foreground'}>
                           {lab.isActive ? 'Active' : 'Inactive'}
                         </Badge>
@@ -314,6 +343,18 @@ export default function LabManagement() {
                             onClick={() => handleEdit(lab)}
                           >
                             <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={async () => {
+                            try {
+                              const resp = await fetch(`/api/bookings/lab/${lab._id}`);
+                              const j = await resp.json();
+                              if (j.success) {
+                                setViewingBookings(j.data || []);
+                                setViewingLab(lab);
+                              }
+                            } catch (err) { console.error(err); }
+                          }}>
+                            View Bookings
                           </Button>
                           <Button
                             variant="ghost"
@@ -332,6 +373,32 @@ export default function LabManagement() {
             )}
           </CardContent>
         </Card>
+
+        {/* Booking Viewer Dialog-like area */}
+        {viewingBookings && viewingLab && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4">
+            <div className="bg-card p-6 rounded max-w-3xl w-full">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold">Bookings for {viewingLab.name}</h3>
+                <Button variant="ghost" onClick={() => { setViewingBookings(null); setViewingLab(null); }}>Close</Button>
+              </div>
+              <div className="space-y-2 max-h-96 overflow-auto">
+                {viewingBookings.length === 0 && <div className="text-muted-foreground">No bookings found</div>}
+                {viewingBookings.map((b: any) => (
+                  <div key={b._id} className="border p-3 rounded">
+                    <div className="flex justify-between">
+                      <div>
+                        <div className="font-medium">{b.date} {b.startTime} - {b.endTime}</div>
+                        <div className="text-sm text-muted-foreground">{b.purpose}</div>
+                      </div>
+                      <div className="text-sm">Status: {b.status}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

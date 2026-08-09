@@ -34,6 +34,7 @@ export interface Lab {
   name: string;
   capacity: number;
   equipment?: string[];
+  labInchargeId?: string;
   isActive: boolean;
   createdAt?: Date;
   updatedAt?: Date;

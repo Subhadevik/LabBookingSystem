@@ -17,7 +17,7 @@ export const getLabs: RequestHandler = async (req, res) => {
 
 export const createLab: RequestHandler = async (req, res) => {
   try {
-    const { name, capacity, equipment } = req.body;
+    const { name, capacity, equipment, labInchargeId } = req.body;
     
     const db = await getDatabase();
     
@@ -34,6 +34,7 @@ export const createLab: RequestHandler = async (req, res) => {
       name,
       capacity: parseInt(capacity),
       equipment: equipment || [],
+      ...(labInchargeId && { labInchargeId }),
       isActive: true,
       createdAt: new Date(),
       updatedAt: new Date()
@@ -55,7 +56,7 @@ export const createLab: RequestHandler = async (req, res) => {
 export const updateLab: RequestHandler = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, capacity, equipment, isActive } = req.body;
+    const { name, capacity, equipment, isActive, labInchargeId } = req.body;
     
     const db = await getDatabase();
     
@@ -63,6 +64,7 @@ export const updateLab: RequestHandler = async (req, res) => {
       name,
       capacity: parseInt(capacity),
       equipment,
+      ...(labInchargeId !== undefined && { labInchargeId }),
       isActive,
       updatedAt: new Date()
     };

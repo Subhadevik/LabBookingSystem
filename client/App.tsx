@@ -12,9 +12,12 @@ import Dashboard from "./pages/Dashboard";
 import LabBooking from "./pages/LabBooking";
 import MyBookings from "./pages/MyBookings";
 import ApproveBookings from "./pages/ApproveBookings";
+import ClubBookings from "./pages/ClubBookings";
+import ClubMembers from "./pages/ClubMembers";
 import UserManagement from "./pages/admin/UserManagement";
 import ClubManagement from "./pages/admin/ClubManagement";
 import LabManagement from "./pages/admin/LabManagement";
+import LabInchargeDashboard from './pages/LabInchargeDashboard';
 import Analytics from "./pages/admin/Analytics";
 import PlaceholderPage from "./pages/PlaceholderPage";
 import NotFound from "./pages/NotFound";
@@ -34,6 +37,7 @@ const App = () => (
           
           {/* Booking Routes */}
           <Route path="/booking" element={<LabBooking />} />
+          <Route path="/lab-booking" element={<LabBooking />} />
           <Route path="/my-bookings" element={<MyBookings />} />
           <Route path="/approve-bookings" element={<ApproveBookings />} />
           
@@ -42,6 +46,9 @@ const App = () => (
           <Route path="/admin/clubs" element={<ClubManagement />} />
           <Route path="/admin/labs" element={<LabManagement />} />
           <Route path="/admin/analytics" element={<Analytics />} />
+          <Route path="/club-bookings" element={<ClubBookings />} />
+          <Route path="/club-members" element={<ClubMembers />} />
+          <Route path="/lab-incharge" element={<LabInchargeDashboard />} />
           
           {/* Management Routes */}
           <Route path="/club-bookings" element={<PlaceholderPage title="Club Bookings" description="Manage laboratory bookings for your club" />} />

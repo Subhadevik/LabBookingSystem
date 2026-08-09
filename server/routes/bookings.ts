@@ -40,12 +40,42 @@ export const getBookings: RequestHandler = async (req, res) => {
 
 export const createBooking: RequestHandler = async (req, res) => {
   try {
-    const { labId, userId, clubId, date, startTime, endTime, purpose } = req.body;
+    const { labId, userId: rawUserId, clubId, date, startTime, endTime, purpose } = req.body;
+    let userId = rawUserId;
+
+    // If userId is not provided in the body, attempt to read from Authorization token
+    if (!userId) {
+      const authHeader = req.headers.authorization?.replace('Bearer ', '');
+      if (authHeader) {
+        try {
+          // Lazy import to avoid top-level dependency changes
+          const jwt = await import('jsonwebtoken');
+          const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+          const decoded = jwt.verify(authHeader, JWT_SECRET) as { userId?: string } | string;
+          if (typeof decoded === 'object' && (decoded as any).userId) {
+            userId = (decoded as any).userId;
+          }
+        } catch (err) {
+          // ignore token errors here; we will handle missing user later
+        }
+      }
+    }
 
     const db = await getDatabase();
 
     // Get user to check their role
-    const user = await db.collection<User>('users').findOne({ _id: new ObjectId(userId) });
+    // Normalize various _id shapes (string, { $oid: string }, ObjectId)
+    let objectIdToQuery: any = userId;
+    if (userId && typeof userId === 'object' && (userId as any).$oid) {
+      objectIdToQuery = (userId as any).$oid;
+    }
+    try {
+      objectIdToQuery = new ObjectId(objectIdToQuery);
+    } catch (err) {
+      // If conversion fails, leave as-is (query by string fallback)
+    }
+
+    const user = await db.collection<User>('users').findOne({ _id: objectIdToQuery });
 
     if (!user) {
       return res.status(404).json({
@@ -54,32 +84,36 @@ export const createBooking: RequestHandler = async (req, res) => {
       } as ApiResponse);
     }
 
-    // Check for conflicts
-    const existingBooking = await db.collection<Booking>('bookings').findOne({
+    // Check for conflicts - fetch same-lab/date bookings and check time overlap in JS
+    const candidates = await db.collection<Booking>('bookings').find({
       labId,
       date,
-      status: { $in: ['pending_club_approval', 'pending_lab_approval', 'approved'] },
-      $or: [
-        {
-          startTime: { $lte: startTime },
-          endTime: { $gt: startTime }
-        },
-        {
-          startTime: { $lt: endTime },
-          endTime: { $gte: endTime }
-        },
-        {
-          startTime: { $gte: startTime },
-          endTime: { $lte: endTime }
-        }
-      ]
+      status: { $in: ['pending_club_approval', 'pending_lab_approval', 'approved'] }
+    }).toArray();
+
+    const toMinutes = (t: string) => {
+      const [hh, mm] = (t || '').split(':').map(Number);
+      if (Number.isFinite(hh) && Number.isFinite(mm)) return hh * 60 + mm;
+      return null;
+    };
+
+    const newStart = toMinutes(startTime);
+    const newEnd = toMinutes(endTime);
+
+    if (newStart === null || newEnd === null) {
+      return res.status(400).json({ success: false, message: 'Invalid start or end time' } as ApiResponse);
+    }
+
+    const overlap = candidates.some(b => {
+      const bStart = toMinutes(b.startTime);
+      const bEnd = toMinutes(b.endTime);
+      if (bStart === null || bEnd === null) return false;
+      // Overlap if start < otherEnd AND end > otherStart
+      return newStart < bEnd && newEnd > bStart;
     });
 
-    if (existingBooking) {
-      return res.status(400).json({
-        success: false,
-        message: 'Time slot already booked'
-      } as ApiResponse);
+    if (overlap) {
+      return res.status(400).json({ success: false, message: 'Time slot already booked' } as ApiResponse);
     }
 
     // Determine initial status based on user role and booking type
@@ -139,7 +173,7 @@ export const updateBookingStatus: RequestHandler = async (req, res) => {
     
     // Get approver info
     const approver = await db.collection<User>('users').findOne({ _id: new ObjectId(approvedBy) });
-    
+
     if (!approver) {
       return res.status(404).json({ success: false, message: 'Approver not found' } as ApiResponse);
     }
@@ -149,18 +183,48 @@ export const updateBookingStatus: RequestHandler = async (req, res) => {
     };
     
     if (action === 'approve') {
-      if (booking.status === 'pending_club_approval' && approver.role === 'club_incharge') {
-        // Club incharge approval - move to lab approval
-        updateData.status = 'pending_lab_approval';
-        updateData.clubApprovalStatus = 'approved';
-        updateData.clubApprovedBy = approvedBy;
-        updateData.clubApprovedAt = new Date();
-      } else if (booking.status === 'pending_lab_approval' && 
-                 (approver.role === 'lab_incharge' || approver.role === 'admin')) {
-        // Lab incharge or admin final approval
-        updateData.status = 'approved';
-        updateData.labApprovedBy = approvedBy;
-        updateData.labApprovedAt = new Date();
+      if (booking.status === 'pending_club_approval') {
+        // Club incharge approval - ensure approver is club_incharge for the club or admin
+        if (approver.role === 'club_incharge') {
+          if (!booking.clubId) {
+            return res.status(400).json({ success: false, message: 'Booking has no club to approve' } as ApiResponse);
+          }
+          const club = await db.collection<Club>('clubs').findOne({ _id: new ObjectId(booking.clubId) });
+          const clubInchargeId = club?.clubInchargeId;
+          if (!clubInchargeId || clubInchargeId !== approvedBy) {
+            return res.status(403).json({ success: false, message: 'Not authorized to approve this club booking' } as ApiResponse);
+          }
+
+          // Authorized
+          updateData.status = 'pending_lab_approval';
+          updateData.clubApprovalStatus = 'approved';
+          updateData.clubApprovedBy = approvedBy;
+          updateData.clubApprovedAt = new Date();
+        } else if (approver.role === 'admin') {
+          // Admin can approve and forward
+          updateData.status = 'pending_lab_approval';
+          updateData.clubApprovalStatus = 'approved';
+          updateData.clubApprovedBy = approvedBy;
+          updateData.clubApprovedAt = new Date();
+        } else {
+          return res.status(403).json({ success: false, message: 'Invalid approver for club approval' } as ApiResponse);
+        }
+      } else if (booking.status === 'pending_lab_approval') {
+        // Lab incharge or admin final approval; if lab_incharge ensure assigned to same lab
+        if (approver.role === 'lab_incharge') {
+          if (!approver.labId || approver.labId !== booking.labId) {
+            return res.status(403).json({ success: false, message: 'Not authorized to approve bookings for this lab' } as ApiResponse);
+          }
+          updateData.status = 'approved';
+          updateData.labApprovedBy = approvedBy;
+          updateData.labApprovedAt = new Date();
+        } else if (approver.role === 'admin') {
+          updateData.status = 'approved';
+          updateData.labApprovedBy = approvedBy;
+          updateData.labApprovedAt = new Date();
+        } else {
+          return res.status(403).json({ success: false, message: 'Invalid approver for lab approval' } as ApiResponse);
+        }
       } else {
         return res.status(400).json({ 
           success: false, 

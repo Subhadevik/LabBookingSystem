@@ -52,9 +52,16 @@ export default function LabBooking() {
       const result = await response.json();
       if (result.success) {
         setLabs(result.data.filter((lab: Lab) => lab.isActive));
+        if (!result.data || result.data.length === 0) {
+          setError('No laboratories found in the system.');
+        }
+      } else {
+        setError(result.message || 'Failed to load laboratories');
+        setLabs([]);
       }
     } catch (error) {
       console.error('Error fetching labs:', error);
+      setError('Network error while fetching laboratories');
     } finally {
       setLoading(false);
     }
@@ -232,6 +239,11 @@ export default function LabBooking() {
                   <div className="text-center py-8">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
                     <p className="text-muted-foreground mt-2">Loading labs...</p>
+                  </div>
+                ) : labs.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">No laboratories available.</p>
+                    {error && <p className="text-destructive mt-2">{error}</p>}
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

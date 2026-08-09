@@ -71,6 +71,7 @@ export default function Dashboard() {
     ];
 
     const adminActions = [
+      { icon: ClipboardList, label: 'Approve Bookings', href: '/approve-bookings', color: 'warning' },
       { icon: Users, label: 'Manage Users', href: '/admin/users', color: 'info' },
       { icon: Building2, label: 'Manage Labs', href: '/admin/labs', color: 'success' },
       { icon: BookOpen, label: 'Manage Clubs', href: '/admin/clubs', color: 'accent' },
