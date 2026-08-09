@@ -4,7 +4,7 @@ A modern lab booking and approval platform for colleges and academic departments
 
 ## Dashboard
 
-<img src="https://github.com/user-attachments/assets/821eb513-3b78-43d6-ad46-4cadab81b745" alt="Lab Booking System Dashboard" width="100%">
+<img src="https://github.com/user-attachments/assets/6c922687-b593-4060-9f41-11737a350933" alt="Login Page" width="500">
 
 ## Overview
 
@@ -106,7 +106,7 @@ The application supports these roles:
 
 ### Login Page
 
-<img src="https://github.com/user-attachments/assets/6c922687-b593-4060-9f41-11737a350933" alt="Login Page" width="500">
+<img src="<img width="1915" height="864" alt="image" src="https://github.com/user-attachments/assets/1c8fca78-9e83-4276-a46c-a98b6ce00859" alt="Login Page" width="500">
 
 ### Booking Page
 
@@ -117,6 +117,8 @@ The application supports these roles:
 <img src="https://github.com/user-attachments/assets/3557b75e-001c-4f87-a203-f6415ad96191" alt="Booking Approval Status" width="100%">
 
 ### Admin Lab Management
+
+<img src="https://github.com/user-attachments/assets/821eb513-3b78-43d6-ad46-4cadab81b745" alt="Lab Booking System Dashboard" width="100%">
 
 <img src="https://github.com/user-attachments/assets/a91ffaf6-a08e-49e7-98ba-4fed4fc2ef10" alt="Admin Lab Management" width="100%">
 
